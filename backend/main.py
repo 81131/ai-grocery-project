@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from database import engine, get_db, Base
-from models import orders  # Imports your new tables
+from models import *  
 
 # Create tables in the database
 Base.metadata.create_all(bind=engine)
