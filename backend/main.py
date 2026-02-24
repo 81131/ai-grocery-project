@@ -1,14 +1,16 @@
-# backend/main.py
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from database import engine, get_db, Base
-from models import *  
+from models import * 
+from APIs import cart, orders
 
-# Create tables in the database
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Ransara Supermarket API")
+
+app.include_router(cart.router)
+app.include_router(orders.router)
 
 @app.get("/")
 def root():
