@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+.venv
+venv/
+.env
+.git
+Dockerfile
+APIs/__pycache__
+APIs/*.pyc
+models/__pycache__
