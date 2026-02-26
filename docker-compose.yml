@@ -1,14 +1,13 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: grocery_postgres_db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpassword
-      POSTGRES_DB: grocery_management
+      # These now pull securely from your .env file
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -25,7 +24,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://admin:secretpassword@db:5432/grocery_management
+      # Passes the URL to FastAPI
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - db
 
@@ -34,13 +34,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: grocery_react_frontend
-    # Assuming standard Vite or Create React App dev server
     command: npm run dev 
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "3000:3000" # Change to "5173:5173" if using Vite's default port
+      - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:8000
     depends_on:
