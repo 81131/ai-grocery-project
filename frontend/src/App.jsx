@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import Notifications from './pages/Notifications';
+import AdminInventory from './pages/AdminInventory';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -46,7 +47,12 @@ function App() {
                 
                 {/* NEW: Only show the Admin Dashboard if the user is actually an admin! */}
                 {userRole === 'admin' && (
-                  <Link to="/admin" style={{ color: '#e67e22', fontWeight: 'bold', textDecoration: 'none' }}>Dashboard</Link>
+                  <>
+                    <Link to="/admin" style={{ color: '#e67e22', fontWeight: 'bold', textDecoration: 'none' }}>Dashboard</Link>
+                    <Link to="/inventory" style={{ color: '#8e44ad', fontWeight: 'bold', textDecoration: 'none' }}>Inventory</Link>
+                    <Link to="/inventory" style={{ color: '#8e44ad', fontWeight: 'bold', textDecoration: 'none' }}>Inventory</Link>
+                    <Link to="/admin" style={{ color: '#e67e22', fontWeight: 'bold', textDecoration: 'none' }}>Orders Dashboard</Link>
+                  </>
                 )}
                 
                 <button onClick={handleLogout} style={{ backgroundColor: '#ff4757', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -69,12 +75,11 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/orders" element={<Orders />} />
-            
-            {/* Pass the new setUserRole function to the Login page */}
             <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUserRole={setUserRole} />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/inventory" element={<AdminInventory />} />
           </Routes>
         </div>
       </div>

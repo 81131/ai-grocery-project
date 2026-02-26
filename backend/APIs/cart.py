@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
 from models.cart import Cart, CartItem
+from models.inventory import Product, StockBatch # <-- Imported real inventory models
 from APIs.auth import get_current_user
 
 router = APIRouter(
@@ -10,18 +11,10 @@ router = APIRouter(
     tags=["Cart Management"]
 )
 
-# Pydantic schema to validate incoming frontend requests
+# Pydantic schema updated to accept floats (e.g., 1.5 KG)
 class CartItemRequest(BaseModel):
     product_id: int
-    quantity: int
-
-# --- Temporary Mock Data so the Cart has prices for checkout ---
-MOCK_PRODUCTS = {
-    1: {"name": "Fresh Organic Apples", "price": 450.0},
-    2: {"name": "Whole Wheat Bread", "price": 120.0},
-    3: {"name": "Fresh Milk 1L", "price": 300.0}
-}
-# ---------------------------------------------------------------
+    quantity: float 
 
 @router.post("/add")
 def add_to_cart(
@@ -42,7 +35,7 @@ def add_to_cart(
     ).first()
     
     if existing_item:
-        existing_item.quantity += item.quantity
+        existing_item.quantity += item.quantity # Works perfectly with floats
     else:
         new_item = CartItem(cart_id=cart.id, product_id=item.product_id, quantity=item.quantity)
         db.add(new_item)
@@ -56,20 +49,26 @@ def view_cart(db: Session = Depends(get_db), user_id: int = Depends(get_current_
     if not cart or not cart.items:
         return {"cart_id": None, "items": [], "total": 0}
         
-    # Inject Mock Product Details so React has names and prices
     enriched_items = []
-    total = 0
+    total = 0.0
+    
     for i in cart.items:
-        product_info = MOCK_PRODUCTS.get(i.product_id, {"name": "Unknown", "price": 0})
-        subtotal = product_info["price"] * i.quantity
+        # Fetch actual product and price from the real database
+        product = db.query(Product).filter(Product.id == i.product_id).first()
+        batch = db.query(StockBatch).filter(StockBatch.product_id == i.product_id).first()
+        
+        name = product.product_name if product else "Unknown Product"
+        price = float(batch.retail_price) if batch else 0.0
+        
+        subtotal = price * float(i.quantity)
         total += subtotal
         
         enriched_items.append({
             "item_id": i.id,
             "product_id": i.product_id, 
-            "quantity": i.quantity,
-            "name": product_info["name"],
-            "price": product_info["price"],
+            "quantity": float(i.quantity),
+            "name": name,
+            "price": price,
             "subtotal": subtotal
         })
         
@@ -83,14 +82,12 @@ def view_cart(db: Session = Depends(get_db), user_id: int = Depends(get_current_
 def update_cart_item(
     item: CartItemRequest, 
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user) # <-- Fixed the hardcoded user
+    user_id: int = Depends(get_current_user)
 ):
-    # 1. Find the user's cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
         
-    # 2. Find the specific item
     existing_item = db.query(CartItem).filter(
         CartItem.cart_id == cart.id, 
         CartItem.product_id == item.product_id
@@ -99,7 +96,7 @@ def update_cart_item(
     if not existing_item:
         raise HTTPException(status_code=404, detail="Item not found in cart")
         
-    # 3. Update quantity or remove if 0
+    # Allows for updating to decimal quantities
     if item.quantity <= 0:
         db.delete(existing_item)
         message = "Item removed from cart"
@@ -114,7 +111,7 @@ def update_cart_item(
 def remove_from_cart(
     product_id: int, 
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user) # <-- Fixed the hardcoded user
+    user_id: int = Depends(get_current_user)
 ):
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
