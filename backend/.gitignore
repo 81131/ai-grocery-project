@@ -9,3 +9,4 @@ APIs/*.pyc
 models/__pycache__
 .__pycache__
 models/*.pyc
+**/__pycache__/
