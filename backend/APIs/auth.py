@@ -48,3 +48,22 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user.user_id
+
+from fastapi import HTTPException, status, Depends
+from sqlalchemy.orm import Session
+from database import get_db
+from models.user_management import User
+
+# ... existing auth code ...
+
+def get_admin_user(current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Checks if the currently authenticated user has the 'admin' role.
+    """
+    user = db.query(User).filter(User.user_id == current_user_id).first()
+    if not user or user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action."
+        )
+    return current_user_id

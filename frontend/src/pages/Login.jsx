@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// Accept the prop from App.jsx
-function Login({ setIsLoggedIn }) {
+// 1. We MUST accept the state update functions from App.jsx here
+function Login({ setIsLoggedIn, setUserRole }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -23,42 +23,62 @@ function Login({ setIsLoggedIn }) {
 
       const data = await response.json();
 
-if (response.ok) {
-        // Save both the token and the role to localStorage
+      if (response.ok) {
+        // 2. Save the new credentials to the browser's memory
         localStorage.setItem('token', data.access_token);
-        localStorage.setItem('role', data.role); // NEW LINE
+        localStorage.setItem('role', data.role); 
         
-        // Update App.jsx state instantly
+        // 3. INSTANTLY update the Navbar state in App.jsx (No refresh needed!)
         setIsLoggedIn(true); 
-        setUserRole(data.role); // NEW LINE
+        setUserRole(data.role); 
         
-        navigate('/');
+        // 4. Smoothly route the user back to the Home page
+        navigate('/'); 
+        
+        /* NOTE: If you still prefer a literal, hard browser refresh instead 
+          of the smooth React transition, you can delete `Maps('/')` 
+          and uncomment the line below:
+          
+          window.location.href = '/'; 
+        */
+
       } else {
         alert('Login failed: ' + data.detail);
       }
     } catch (error) {
       console.error('Error logging in:', error);
+      alert('An error occurred while trying to log in.');
     }
   };
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '400px', margin: '0 auto', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
       <h2 style={{ textAlign: 'center', color: '#2c3e50', marginBottom: '20px' }}>Welcome Back</h2>
+      
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <input 
-          type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required 
+          type="email" 
+          placeholder="Email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          required 
           style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc' }}
         />
         <input 
-          type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required 
+          type="password" 
+          placeholder="Password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+          required 
           style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc' }}
         />
         <button type="submit" style={{ padding: '12px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>
           Log In
         </button>
       </form>
+
       <p style={{ marginTop: '20px', textAlign: 'center', color: '#7f8c8d' }}>
-        Don't have an account? <Link to="/register" style={{ color: '#4CAF50', fontWeight: 'bold' }}>Register here</Link>
+        Don't have an account? <Link to="/register" style={{ color: '#4CAF50', fontWeight: 'bold', textDecoration: 'none' }}>Register here</Link>
       </p>
     </div>
   );

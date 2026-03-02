@@ -1,15 +1,26 @@
-# frontend/Dockerfile
-FROM node:20-alpine
-
+# Stage 1: Build the React application
+FROM node:20-alpine as build
 WORKDIR /app
 
 # Copy package files and install dependencies
-# (Ensure you have run `npm create vite@latest .` or similar in the frontend folder first)
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Copy the rest of the frontend code
+# Copy the rest of the frontend code and build it
 COPY . .
+RUN npm run build
 
-# Standard dev command for Vite/Create React App
-CMD ["npm", "run", "dev"]
+# Stage 2: Serve the app with Nginx
+FROM nginx:alpine
+# Copy the built assets from the previous stage to Nginx's public folder
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Expose port 80 (Nginx default)
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# ADD THIS LINE AT THE BOTTOM:
+COPY nginx.conf /etc/nginx/conf.d/default.conf

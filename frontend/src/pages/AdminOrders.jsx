@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function AdminDashboard() {
+function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
 
@@ -79,4 +79,4 @@ function AdminDashboard() {
   );
 }
 
-export default AdminDashboard;
+export default AdminOrders;
