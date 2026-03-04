@@ -5,10 +5,7 @@ import AdminInventory from './AdminInventory';
 import AdminSuppliers from './AdminSuppliers';
 
 function AdminPanel() {
-  // Use the URL parameters instead of standard state
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Read the '?tab=' value from the URL, default to 'orders' if missing
   const activeTab = searchParams.get('tab') || 'orders';
 
   const getTabStyle = (tabName) => ({
@@ -21,13 +18,22 @@ function AdminPanel() {
     transition: 'all 0.2s ease'
   });
 
-  // Update the URL when a sidebar item is clicked
   const handleTabChange = (tabName) => {
     setSearchParams({ tab: tabName });
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '80vh', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+    <div style={{ 
+      display: 'flex', 
+      height: '100vh',   // <-- FIX: Locked to exactly the height of the window
+      width: '100vw', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0, 
+      paddingTop: '75px', // <-- FIX: Pushes the dashboard content safely below the sticky Navbar
+      backgroundColor: '#fafbfc', 
+      overflow: 'hidden'  // <-- FIX: Prevents full-page scrolling so the sidebar stays locked
+    }}>
       
       {/* SIDEBAR */}
       <div style={{ width: '250px', backgroundColor: '#fdfdfd', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' }}>
@@ -50,7 +56,7 @@ function AdminPanel() {
       </div>
 
       {/* DYNAMIC MAIN CONTENT */}
-      <div style={{ flex: 1, padding: '30px', backgroundColor: '#fafbfc' }}>
+      <div style={{ flex: 1, padding: '30px', overflowY: 'auto' }}>
         {activeTab === 'orders' && <AdminOrders />}
         {activeTab === 'inventory' && <AdminInventory />}
         {activeTab === 'suppliers' && <AdminSuppliers />}

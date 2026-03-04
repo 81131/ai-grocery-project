@@ -14,6 +14,10 @@ from sqlalchemy.exc import OperationalError
 from database import engine, get_db, Base, SessionLocal 
 from models.user_management import User
 from APIs.auth import get_password_hash 
+from fastapi.staticfiles import StaticFiles
+import os
+
+
 
 # --- NEW: Retry loop to wait for PostgreSQL ---
 print("Connecting to database...")
@@ -73,6 +77,12 @@ if ENVIRONMENT == "production":
     app = FastAPI(title="Ransara Supermarket API", docs_url=None, redoc_url=None, openapi_url=None)
 else:
     app = FastAPI(title="Ransara Supermarket API")
+
+# Create the folder if it doesn't exist
+os.makedirs("static/uploads", exist_ok=True)
+# Mount the folder so images can be accessed via URL
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 app.add_middleware(
     CORSMiddleware,

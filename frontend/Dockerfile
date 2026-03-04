@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy package files and install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
-
+RUN npm install react-image-crop
 # Copy the rest of the frontend code and build it
 COPY . .
 RUN npm run build
