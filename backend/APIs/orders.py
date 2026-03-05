@@ -11,8 +11,10 @@ from models.inventory import StockBatch, Product, Category
 from schemas.orders import DeliveryConfigUpdate, DeliveryFeeCalculationRequest, OrderStatusUpdate
 from APIs.auth import get_current_user
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from APIs.auth import get_active_user
+from sqlalchemy.orm import Session, joinedload
+from models.user_management import User
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -183,11 +185,19 @@ def checkout(
 
 @router.get("/")
 def get_user_orders(db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
-    return db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
+    # ADD .options() to eager load the delivery_info and items tables
+    return db.query(Order).options(
+        joinedload(Order.delivery_info),
+        joinedload(Order.items)
+    ).filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
 
 @router.get("/all")
 def get_all_orders(db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
-    return db.query(Order).order_by(Order.created_at.desc()).all()
+    # ADD .options() here as well for the Admin view
+    return db.query(Order).options(
+        joinedload(Order.delivery_info),
+        joinedload(Order.items)
+    ).order_by(Order.created_at.desc()).all()
 
 @router.put("/{order_id}/status")
 def update_order_status(order_id: int, status_data: OrderStatusUpdate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
@@ -201,13 +211,20 @@ def update_order_status(order_id: int, status_data: OrderStatusUpdate, db: Sessi
 
 @router.get("/notifications")
 def get_notifications(db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
+    # 1. Identify who is asking
+    user = db.query(User).filter(User.user_id == user_id).first()
+    
+    # 2. If it's the Admin, return the global feed
+    if user and user.role == "admin":
+        return db.query(OrderStatusHistory).order_by(OrderStatusHistory.changed_at.desc()).limit(15).all()
+        
+    # 3. If it's a Customer, return only their personal order updates
     user_orders = db.query(Order.id).filter(Order.user_id == user_id).all()
     order_ids = [o.id for o in user_orders]
     
-    notifications = db.query(OrderStatusHistory).filter(
+    return db.query(OrderStatusHistory).filter(
         OrderStatusHistory.order_id.in_(order_ids)
     ).order_by(OrderStatusHistory.changed_at.desc()).limit(10).all()
-    return notifications
 
 
 @router.get("/dashboard-stats")
@@ -236,22 +253,27 @@ def get_dashboard_stats(db: Session = Depends(get_db), user_id: int = Depends(ge
     }
 
     for o in recent_orders_db:
-        colors = status_colors.get(o.current_status, status_colors["Pending"])
-        
-        # Calculate time ago roughly
-        time_diff = datetime.now(timezone.utc) - o.created_at
-        hours_ago = int(time_diff.total_seconds() / 3600)
-        time_str = f"{hours_ago} hours ago" if hours_ago > 0 else "Just now"
-        
-        recent_orders.append({
-            "id": f"ORD-{o.id:04d}",
-            "name": o.delivery_info.customer_name if o.delivery_info else "Unknown",
-            "time": time_str,
-            "total": f"Rs. {o.total_amount:.2f}",
-            "status": o.current_status,
-            "color": colors["color"],
-            "bg": colors["bg"]
-        })
+            colors = status_colors.get(o.current_status, status_colors["Pending"])
+            
+            # --- UPDATE THESE LINES ---
+            # Strip timezone info from both to guarantee they can be safely subtracted
+            safe_now = datetime.now().replace(tzinfo=None)
+            safe_created_at = o.created_at.replace(tzinfo=None) if o.created_at else safe_now
+            
+            time_diff = safe_now - safe_created_at
+            hours_ago = int(time_diff.total_seconds() / 3600)
+            time_str = f"{hours_ago} hours ago" if hours_ago > 0 else "Just now"
+            # --------------------------
+            
+            recent_orders.append({
+                "id": f"ORD-{o.id:04d}",
+                "name": o.delivery_info.customer_name if o.delivery_info else "Unknown",
+                "time": time_str,
+                "total": f"Rs. {o.total_amount:.2f}",
+                "status": o.current_status,
+                "color": colors["color"],
+                "bg": colors["bg"]
+            })
 
     # 3. Low Stock Alerts (Items with < 20 quantity)
     low_stock_db = db.query(StockBatch).filter(StockBatch.current_quantity > 0, StockBatch.current_quantity < 20).limit(5).all()

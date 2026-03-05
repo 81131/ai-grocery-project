@@ -77,7 +77,7 @@ const handleLogout = () => {
           </div>
         )}
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ width: '100%', minHeight: 'calc(100vh - 70px)' }}>              
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/cart" element={<Cart />} />
@@ -91,7 +91,7 @@ const handleLogout = () => {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/product/:id" element={<ProductDetails />} />
           </Routes>
-        </div>
+      </div>
       </div>
     </Router>
   );

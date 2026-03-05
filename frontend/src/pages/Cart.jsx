@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Minus, ShoppingCart, MapPin, Package, UploadCloud, CreditCard } from 'lucide-react';
+import CheckoutMap from '../components/CheckoutMap';
 
 function Cart() {
   const [cartData, setCartData] = useState({ items: [], total: 0 });
   const [customerName, setCustomerName] = useState('');
   
-  // Logistics & Delivery States
+  // Unified Logistics & Delivery States
   const [deliveryType, setDeliveryType] = useState('Home Delivery');
   const [address, setAddress] = useState('');
   const [distanceKm, setDistanceKm] = useState(0);
@@ -30,8 +31,9 @@ function Cart() {
     if (res.ok) setCartData(await res.json());
   };
 
-  useEffect(() => { fetchCart(); }, []);
+  useEffect(() => { fetchCart(); }, [navigate]);
 
+  // SINGLE SOURCE OF TRUTH FOR FEE CALCULATION
   useEffect(() => {
     const calculateFee = async () => {
       const token = localStorage.getItem('token');
@@ -72,7 +74,7 @@ function Cart() {
     const token = localStorage.getItem('token');
 
     if (deliveryType === 'Home Delivery' && !address.trim()) {
-      alert("Please provide a delivery address."); return;
+      alert("Please select a delivery location on the map."); return;
     }
     if (paymentMethod === 'Bank Transfer' && !paymentSlip) {
       alert("Please upload your bank transfer payment slip to proceed."); return;
@@ -126,6 +128,7 @@ function Cart() {
         <div className="card" style={{ flex: '1 1 600px' }}>
           {cartData.items.map(item => (
             <div key={item.item_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid var(--border-light)' }}>
+              
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 2 }}>
                 <img src={item.image} alt={item.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--bg-muted)' }} />
                 <div>
@@ -134,7 +137,6 @@ function Cart() {
                 </div>
               </div>
               
-              {/* Replaced text + and - with lucide-react SVGs */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1, justifyContent: 'center' }}>
                 <button onClick={() => updateQuantity(item.batch_id, item.quantity - 1)} className="btn btn-secondary" style={{ padding: '8px' }}>
                   <Minus size={16} />
@@ -156,7 +158,7 @@ function Cart() {
         </div>
 
         {/* RIGHT COLUMN: Checkout Panel */}
-        <div className="card" style={{ flex: '1 1 350px', position: 'sticky', top: '30px' }}>
+        <div className="card" style={{ flex: '1 1 450px', position: 'sticky', top: '100px' }}>
           <h3 className="text-title" style={{ margin: '0 0 20px 0', borderBottom: '1px solid var(--border-light)', paddingBottom: '15px' }}>Order Summary</h3>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '15px', color: 'var(--text-muted)' }}>
@@ -172,47 +174,65 @@ function Cart() {
             <span style={{ color: 'var(--color-primary)' }}>Rs. {grandTotal.toFixed(2)}</span>
           </div>
 
-          <form onSubmit={handleCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <form onSubmit={handleCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <input type="text" placeholder="Full Name" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="input-field" />
             
-            <div style={{ backgroundColor: 'var(--bg-app)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-              <label style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <MapPin size={16} /> Fulfillment Method
+            <div style={{ backgroundColor: 'var(--bg-app)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              <label style={{ fontWeight: '600', fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                <MapPin size={18} /> Fulfillment Method
               </label>
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px' }}>
-                  <input type="radio" value="Home Delivery" checked={deliveryType === 'Home Delivery'} onChange={(e) => setDeliveryType(e.target.value)} /> Home Delivery
+              
+              <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                  <input type="radio" value="Home Delivery" checked={deliveryType === 'Home Delivery'} onChange={(e) => setDeliveryType(e.target.value)} style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }} /> Home Delivery
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px' }}>
-                  <input type="radio" value="Store Pickup" checked={deliveryType === 'Store Pickup'} onChange={(e) => setDeliveryType(e.target.value)} /> Store Pickup
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                  <input type="radio" value="Store Pickup" checked={deliveryType === 'Store Pickup'} onChange={(e) => setDeliveryType(e.target.value)} style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }} /> Store Pickup
                 </label>
               </div>
 
+              {/* DYNAMIC MAP SECTION */}
               {deliveryType === 'Home Delivery' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <input type="text" placeholder="Delivery Address" required value={address} onChange={(e) => setAddress(e.target.value)} className="input-field" />
-                  <input type="number" step="0.1" placeholder="Est. Distance (KM)" required value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} className="input-field" title="Enter distance for accurate fee calculation" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Pinpoint your exact delivery location on the map.</p>
+                  
+                  <div style={{ height: '300px', width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-light)', position: 'relative', zIndex: 1 }}>
+                    <CheckoutMap 
+                      onLocationSelect={(selectedAddress) => setAddress(selectedAddress)} 
+                      onDistanceCalculated={(km) => setDistanceKm(km)} 
+                    />
+                  </div>
+
+                  {/* Read-only inputs driven by the Map component */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input type="text" placeholder="Map Address" required readOnly value={address} className="input-field" style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-muted)', fontSize: '13px' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      <span>Calculated Distance:</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{distanceKm ? `${distanceKm.toFixed(2)} KM` : '0.00 KM'}</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
             
+            {/* PAYMENT SECTION */}
             <div>
-              <label style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <CreditCard size={16} /> Payment Method
+              <label style={{ fontWeight: '600', fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                <CreditCard size={18} /> Payment Method
               </label>
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px' }}>
-                  <input type="radio" value="Bank Transfer" checked={paymentMethod === 'Bank Transfer'} onChange={(e) => setPaymentMethod(e.target.value)} /> Bank Transfer
+              <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                  <input type="radio" value="Bank Transfer" checked={paymentMethod === 'Bank Transfer'} onChange={(e) => setPaymentMethod(e.target.value)} style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }} /> Bank Transfer
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px' }}>
-                  <input type="radio" value="PayHere" checked={paymentMethod === 'PayHere'} onChange={(e) => setPaymentMethod(e.target.value)} /> PayHere
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                  <input type="radio" value="PayHere" checked={paymentMethod === 'PayHere'} onChange={(e) => setPaymentMethod(e.target.value)} style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px' }} /> PayHere
                 </label>
               </div>
 
               {paymentMethod === 'Bank Transfer' && (
                 <div style={{ backgroundColor: 'rgba(243, 156, 18, 0.1)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-warning)' }}>
                   <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#b9770e' }}>
-                    Please transfer <strong>Rs. {grandTotal.toFixed(2)}</strong> to Account: 123456789 (BOC).
+                    Please transfer <strong style={{ fontSize: '14px' }}>Rs. {grandTotal.toFixed(2)}</strong> to Account: 123456789 (BOC).
                   </p>
                   <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setPaymentSlip(e.target.files[0])} style={{ fontSize: '13px', width: '100%', color: 'var(--text-muted)' }} />
                 </div>

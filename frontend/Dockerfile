@@ -7,6 +7,7 @@ COPY package.json package-lock.json* ./
 RUN npm install
 RUN npm install react-image-crop
 RUN npm install lucide-react recharts
+RUN npm install @react-google-maps/api use-places-autocomplete
 # Copy the rest of the frontend code and build it
 COPY . .
 RUN npm run build
