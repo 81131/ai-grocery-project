@@ -6,3 +6,5 @@ passlib==1.7.4
 bcrypt==3.2.2
 python-jose[cryptography]
 python-multipart
+google-genai
+python-dotenv==1.0.1

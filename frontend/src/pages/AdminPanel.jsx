@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import AdminOrders from './AdminOrders';
 import AdminInventory from './AdminInventory';
 import AdminSuppliers from './AdminSuppliers';
+import AdminDelivery from './AdminDelivery'; 
 
 function AdminPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,17 +24,7 @@ function AdminPanel() {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      height: '100vh',   // <-- FIX: Locked to exactly the height of the window
-      width: '100vw', 
-      position: 'absolute', 
-      top: 0, 
-      left: 0, 
-      paddingTop: '75px', // <-- FIX: Pushes the dashboard content safely below the sticky Navbar
-      backgroundColor: '#fafbfc', 
-      overflow: 'hidden'  // <-- FIX: Prevents full-page scrolling so the sidebar stays locked
-    }}>
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', position: 'absolute', top: 0, left: 0, paddingTop: '75px', backgroundColor: '#fafbfc', overflow: 'hidden' }}>
       
       {/* SIDEBAR */}
       <div style={{ width: '250px', backgroundColor: '#fdfdfd', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' }}>
@@ -43,15 +34,11 @@ function AdminPanel() {
         </div>
         
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          <li style={getTabStyle('orders')} onClick={() => handleTabChange('orders')}>
-            📦 Order Fulfillment
-          </li>
-          <li style={getTabStyle('inventory')} onClick={() => handleTabChange('inventory')}>
-            🛒 Inventory & Products
-          </li>
-          <li style={getTabStyle('suppliers')} onClick={() => handleTabChange('suppliers')}>
-            🏢 Supplier Directory
-          </li>
+          <li style={getTabStyle('orders')} onClick={() => handleTabChange('orders')}>📦 Order Fulfillment</li>
+          <li style={getTabStyle('inventory')} onClick={() => handleTabChange('inventory')}>🛒 Inventory & Products</li>
+          <li style={getTabStyle('suppliers')} onClick={() => handleTabChange('suppliers')}>🏢 Supplier Directory</li>
+          {/* NEW TAB */}
+          <li style={getTabStyle('delivery')} onClick={() => handleTabChange('delivery')}>🚚 Delivery Settings</li>
         </ul>
       </div>
 
@@ -60,6 +47,7 @@ function AdminPanel() {
         {activeTab === 'orders' && <AdminOrders />}
         {activeTab === 'inventory' && <AdminInventory />}
         {activeTab === 'suppliers' && <AdminSuppliers />}
+        {activeTab === 'delivery' && <AdminDelivery />} {/* NEW PANEL */}
       </div>
 
     </div>

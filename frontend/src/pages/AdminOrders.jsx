@@ -3,78 +3,252 @@ import { useNavigate } from 'react-router-dom';
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchAllOrders = async () => {
+  const fetchOrders = async () => {
     const token = localStorage.getItem('token');
     if (!token) return navigate('/login');
 
-    const res = await fetch('http://localhost:8000/orders/all', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setOrders(data);
+    try {
+      const res = await fetch('http://localhost:8000/orders/all', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setOrders(await res.json());
+      }
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAllOrders(); }, [navigate]);
+  useEffect(() => {
+    fetchOrders();
+    // Optional: Refresh orders every 30 seconds for a "live feed" feel
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
+  }, [navigate]);
 
-  const handleStatusChange = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:8000/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ status: newStatus })
-    });
-    
-    if (res.ok) {
-      alert(`Order #${orderId} marked as ${newStatus}`);
-      fetchAllOrders(); // Refresh the list
+    try {
+      const res = await fetch(`http://localhost:8000/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        // Update local state to reflect the change instantly without a full reload
+        setOrders(orders.map(o => o.id === orderId ? { ...o, current_status: newStatus } : o));
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, current_status: newStatus });
+        }
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Status update error:", error);
     }
+  };
+
+  // Helper for styling status badges
+  const getStatusBadge = (status) => {
+    const styles = {
+      'Pending': { bg: '#fff3cd', color: '#856404', border: '#ffeeba' },
+      'Processing': { bg: '#cce5ff', color: '#004085', border: '#b8daff' },
+      'Out for Delivery': { bg: '#e2e3e5', color: '#383d41', border: '#d6d8db' },
+      'Completed': { bg: '#d4edda', color: '#155724', border: '#c3e6cb' },
+      'Cancelled': { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' }
+    };
+    const style = styles[status] || { bg: '#f8f9fa', color: '#6c757d', border: '#dee2e6' };
+    
+    return (
+      <span style={{ 
+        backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}`,
+        padding: '5px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold'
+      }}>
+        {status}
+      </span>
+    );
   };
 
   return (
-    <div>
-      <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Store Management Dashboard</h2>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        {orders.map(order => (
-          <div key={order.id} style={{ 
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            backgroundColor: 'white', padding: '20px', borderRadius: '8px', 
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderLeft: '5px solid #4CAF50'
-          }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ margin: '0 0 5px 0' }}>Order #{order.id}</h3>
-              <p style={{ margin: 0, color: '#7f8c8d' }}>Total: Rs. {order.total_amount.toFixed(2)}</p>
-            </div>
-
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <span style={{ 
-                backgroundColor: '#e8f5e9', color: '#2e7d32', padding: '5px 12px', 
-                borderRadius: '20px', fontWeight: 'bold', fontSize: '14px' 
-              }}>
-                Current: {order.current_status}
-              </span>
-            </div>
-
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <select 
-                onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                defaultValue=""
-                style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }}
-              >
-                <option value="" disabled>Update Status...</option>
-                <option value="Processing">Processing</option>
-                <option value="Packed">Packed</option>
-                <option value="Out for Delivery">Out for Delivery</option>
-                <option value="Delivered">Delivered</option>
-              </select>
-            </div>
-          </div>
-        ))}
+    <div style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ color: '#2c3e50', margin: 0 }}>Order Fulfillment 📦</h2>
+        <button onClick={fetchOrders} style={{ padding: '8px 15px', backgroundColor: '#ecf0f1', border: '1px solid #bdc3c7', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', color: '#2c3e50' }}>
+          🔄 Refresh Feed
+        </button>
       </div>
+
+      {loading ? (
+        <p style={{ textAlign: 'center', color: '#7f8c8d' }}>Loading order feed...</p>
+      ) : (
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+              <tr>
+                <th style={{ padding: '15px', color: '#7f8c8d' }}>Order ID</th>
+                <th style={{ padding: '15px', color: '#7f8c8d' }}>Date & Time</th>
+                <th style={{ padding: '15px', color: '#7f8c8d' }}>Customer</th>
+                <th style={{ padding: '15px', color: '#7f8c8d' }}>Total Value</th>
+                <th style={{ padding: '15px', color: '#7f8c8d' }}>Status</th>
+                <th style={{ padding: '15px', color: '#7f8c8d', textAlign: 'center' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#95a5a6' }}>No orders have been placed yet.</td></tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order.id} style={{ borderBottom: '1px solid #f0f0f0', backgroundColor: order.current_status === 'Pending' ? '#fffdf7' : 'white' }}>
+                    <td style={{ padding: '15px', fontWeight: 'bold', color: '#34495e' }}>#{order.id}</td>
+                    <td style={{ padding: '15px', color: '#555' }}>
+                      {new Date(order.created_at).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '15px', fontWeight: '500' }}>
+                      {order.delivery_info?.customer_name || 'Unknown'}
+                    </td>
+                    <td style={{ padding: '15px', fontWeight: 'bold', color: '#27ae60' }}>
+                      Rs. {order.total_amount?.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '15px' }}>
+                      {getStatusBadge(order.current_status)}
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <button 
+                        onClick={() => setSelectedOrder(order)} 
+                        style={{ padding: '8px 15px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                      >
+                        Review & Fulfill
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* --- ORDER DETAILS MODAL --- */}
+      {selectedOrder && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '800px', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 5px 0', color: '#2c3e50' }}>Order #{selectedOrder.id}</h2>
+                <p style={{ margin: 0, color: '#7f8c8d', fontSize: '14px' }}>Placed on {new Date(selectedOrder.created_at).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#95a5a6' }}>✖</button>
+            </div>
+
+{/* Two-Column Layout for Info */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#34495e', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>Delivery Details</h4>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Name:</strong> {selectedOrder.delivery_info?.customer_name}</p>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Address:</strong> {selectedOrder.delivery_info?.delivery_address}</p>
+                
+                {/* NEW: Payment Review Section */}
+                <h4 style={{ margin: '15px 0 10px 0', color: '#34495e', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>Payment Info</h4>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Method:</strong> {selectedOrder.payment_method}</p>
+                
+                {selectedOrder.payment_slip_url && (
+                  <div style={{ marginTop: '10px' }}>
+                    <a 
+                      href={selectedOrder.payment_slip_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ 
+                        display: 'inline-block', padding: '6px 12px', backgroundColor: '#3498db', 
+                        color: 'white', textDecoration: 'none', borderRadius: '4px', 
+                        fontSize: '12px', fontWeight: 'bold' 
+                      }}
+                    >
+                      📄 View Payment Slip
+                    </a>
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+
+
+              {/* ... Status Update Controls ... */}
+                {/* Status Update Controls */}
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '15px' }}>
+                  {['Pending', 'Processing', 'Out for Delivery', 'Completed', 'Cancelled'].map(status => (
+                    <button 
+                      key={status}
+                      onClick={() => updateOrderStatus(selectedOrder.id, status)}
+                      disabled={selectedOrder.current_status === status}
+                      style={{ 
+                        padding: '5px 10px', fontSize: '12px', borderRadius: '4px', cursor: 'pointer',
+                        backgroundColor: selectedOrder.current_status === status ? '#bdc3c7' : 'white',
+                        border: '1px solid #bdc3c7', color: selectedOrder.current_status === status ? 'white' : '#2c3e50'
+                      }}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Packing List / Batch List */}
+            <h4 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>Packing List (Items to pull from shelves)</h4>
+            <div style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>
+                  <tr>
+                    <th style={{ padding: '10px 15px', color: '#7f8c8d', fontSize: '13px' }}>Target Batch ID</th>
+                    <th style={{ padding: '10px 15px', color: '#7f8c8d', fontSize: '13px' }}>Quantity to Pack</th>
+                    <th style={{ padding: '10px 15px', color: '#7f8c8d', fontSize: '13px' }}>Sold Price</th>
+                    <th style={{ padding: '10px 15px', color: '#7f8c8d', fontSize: '13px', textAlign: 'right' }}>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                    selectedOrder.items.map(item => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                        <td style={{ padding: '12px 15px', fontWeight: 'bold', color: '#d35400' }}>
+                          Batch #{item.batch_id}
+                        </td>
+                        <td style={{ padding: '12px 15px', fontWeight: 'bold' }}>{item.quantity}</td>
+                        <td style={{ padding: '12px 15px' }}>Rs. {item.price_at_purchase?.toFixed(2)}</td>
+                        <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '500' }}>
+                          Rs. {(item.quantity * item.price_at_purchase).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="4" style={{ padding: '15px', textAlign: 'center', color: '#95a5a6' }}>No items found in this order.</td></tr>
+                  )}
+                </tbody>
+                <tfoot style={{ backgroundColor: '#f8f9fa', borderTop: '2px solid #eee' }}>
+                  <tr>
+                    <td colSpan="3" style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#2c3e50' }}>Total:</td>
+                    <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#27ae60', fontSize: '16px' }}>
+                      Rs. {selectedOrder.total_amount?.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

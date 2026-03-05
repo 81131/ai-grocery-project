@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminPanel from './pages/AdminPanel';
 import Notifications from './pages/Notifications';
+import ProductDetails from './pages/ProductDetails';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   
@@ -73,6 +74,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
           </Routes>
         </div>
       </div>

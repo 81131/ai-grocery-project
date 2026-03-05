@@ -4,15 +4,50 @@ from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime, timezone
 
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from database import Base
+from datetime import datetime, timezone
+
+# NEW: Master configuration table for delivery calculations
+class DeliveryConfig(Base):
+    __tablename__ = "delivery_config"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Methods: "weight", "distance", "combined", "fixed"
+    active_method = Column(String, default="fixed")
+    
+    # Configuration parameters
+    fixed_fee = Column(Float, default=400.0)
+    
+    base_weight_kg = Column(Float, default=1.0)
+    base_weight_fee = Column(Float, default=400.0)
+    extra_weight_fee_per_kg = Column(Float, default=200.0)
+    
+    base_distance_km = Column(Float, default=1.0)
+    base_distance_fee = Column(Float, default=200.0)
+    extra_distance_fee_per_km = Column(Float, default=150.0)
+
 class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)    
-    total_amount = Column(Float, default=0.0)
+    
+    # Financials
+    subtotal_amount = Column(Float, default=0.0) # Cost of items
+    delivery_fee = Column(Float, default=0.0)    # Cost of delivery
+    total_amount = Column(Float, default=0.0)    # Subtotal + Delivery
+    
+    # Data Tracking for Analytics/AI
+    delivery_type = Column(String, default="Home Delivery") # "Home Delivery" or "Store Pickup"
+    total_weight_kg = Column(Float, default=0.0)
+    delivery_distance_km = Column(Float, default=0.0)
     
     current_status = Column(String, default="Pending") 
-    delivery_method = Column(String) 
+    payment_method = Column(String, default="Bank Transfer")
+    payment_slip_url = Column(String, nullable=True)
     
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -20,6 +55,7 @@ class Order(Base):
     status_history = relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
     delivery_info = relationship("OrderDelivery", back_populates="order", uselist=False, cascade="all, delete-orphan")
 
+# ... (Keep OrderStatusHistory, OrderDelivery, and OrderItem exactly as they were previously updated)
 class OrderStatusHistory(Base):
     __tablename__ = "order_status_history"
 
@@ -48,9 +84,10 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    product_id = Column(Integer, nullable=False) 
     
-    # CHANGED TO FLOAT to support decimal measurements (e.g., 1.5 KG)
+    # CHANGED: Order items now record the specific batch sold
+    batch_id = Column(Integer, ForeignKey("stock_batches.id"), nullable=False) 
+    
     quantity = Column(Float, nullable=False)
     price_at_purchase = Column(Float, nullable=False)
 
