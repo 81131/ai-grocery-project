@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-// 1. We MUST accept the state update functions from App.jsx here
-function Login({ setIsLoggedIn, setUserRole }) {
+// 1. Add setIsActive to the accepted props
+function Login({ setIsLoggedIn, setUserRole, setIsActive }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -24,32 +24,30 @@ function Login({ setIsLoggedIn, setUserRole }) {
       const data = await response.json();
 
       if (response.ok) {
-        // 2. Save the new credentials to the browser's memory
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('role', data.role); 
-        
-        // 3. INSTANTLY update the Navbar state in App.jsx (No refresh needed!)
-        setIsLoggedIn(true); 
-        setUserRole(data.role); 
-        
-        // 4. Smoothly route the user back to the Home page
-        navigate('/'); 
-        
-        /* NOTE: If you still prefer a literal, hard browser refresh instead 
-          of the smooth React transition, you can delete `Maps('/')` 
-          and uncomment the line below:
-          
-          window.location.href = '/'; 
-        */
+              // 2. Save credentials to local storage
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('role', data.role); 
 
-      } else {
-        alert('Login failed: ' + data.detail);
-      }
-    } catch (error) {
-      console.error('Error logging in:', error);
-      alert('An error occurred while trying to log in.');
-    }
-  };
+      // FIX: Pull from data.is_active (snake_case)
+      localStorage.setItem('isActive', String(data.is_active));
+
+      // 3. Update the state in App.jsx
+      setIsLoggedIn(true); 
+      setUserRole(data.role); 
+
+      // FIX: Pull from data.is_active (snake_case)
+      setIsActive(data.is_active);
+
+      // 4. Smoothly route the user back to the Home page
+      navigate('/');
+            } else {
+              alert('Login failed: ' + data.detail);
+            }
+          } catch (error) {
+            console.error('Error logging in:', error);
+            alert('An error occurred while trying to log in.');
+          }
+        };
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '400px', margin: '0 auto', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>

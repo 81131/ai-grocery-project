@@ -7,11 +7,13 @@ import math
 from database import get_db
 from models.orders import Order, OrderItem, OrderDelivery, OrderStatusHistory, DeliveryConfig
 from models.cart import Cart
-from models.inventory import StockBatch, Product
+from models.inventory import StockBatch, Product, Category
 from schemas.orders import DeliveryConfigUpdate, DeliveryFeeCalculationRequest, OrderStatusUpdate
 from APIs.auth import get_current_user
 from sqlalchemy import func
 from datetime import datetime, timedelta
+from APIs.auth import get_active_user
+
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -111,7 +113,7 @@ def checkout(
     payment_method: str = Form(...),
     payment_slip: UploadFile = File(None),
     db: Session = Depends(get_db), 
-    user_id: int = Depends(get_current_user)
+    user_id: int = Depends(get_active_user)
 ):
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart or not cart.items:

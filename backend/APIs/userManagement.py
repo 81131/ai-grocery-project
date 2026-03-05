@@ -9,14 +9,8 @@ from APIs.auth import verify_password, create_access_token, timedelta, ACCESS_TO
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from APIs.auth import get_password_hash 
+from schemas.user import UserCreate
 
-# Define the expected JSON body
-class UserCreate(BaseModel):
-    first_name: str
-    last_name: str
-    email: str  # You can use EmailStr if you install pydantic[email]
-    password: str # Notice we changed it from password_hash to just password
-    role: Optional[str] = "customer"
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
@@ -45,6 +39,12 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "User created", "user_id": new_user.user_id}
 
+@router.get("/")
+def get_all_users(db: Session = Depends(get_db)):
+    """Fetch all users for the Admin Dashboard"""
+    users = db.query(User).all()
+    return users
+
 @router.get("/{user_id}")
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.user_id == user_id).first()
@@ -52,16 +52,26 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+# In backend/APIs/userManagement.py
 @router.put("/{user_id}")
-def update_user(user_id: int, first_name: Optional[str] = None, last_name: Optional[str] = None, phone_number: Optional[str] = None, role: Optional[str] = None, db: Session = Depends(get_db)):
+def update_user(
+    user_id: int, 
+    first_name: Optional[str] = None, 
+    last_name: Optional[str] = None, 
+    phone_number: Optional[str] = None, 
+    role: Optional[str] = None, 
+    is_active: Optional[bool] = None, # NEW: Accept status
+    db: Session = Depends(get_db)
+):
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if first_name: user.first_name = first_name
-    if last_name: user.last_name = last_name
-    if phone_number: user.phone_number = phone_number
-    if role: user.role = role
+    if first_name is not None: user.first_name = first_name
+    if last_name is not None: user.last_name = last_name
+    if phone_number is not None: user.phone_number = phone_number
+    if role is not None: user.role = role
+    if is_active is not None: user.is_active = is_active # NEW: Apply status
     
     db.commit()
     return {"message": "User updated successfully"}
@@ -80,7 +90,6 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # OAuth2 uses 'username' by default, but we are using it to pass the email
     user = db.query(User).filter(User.email == form_data.username).first()
     
     if not user or not verify_password(form_data.password, user.password_hash):
@@ -95,4 +104,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         data={"sub": str(user.user_id)}, expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+    # ADD is_active to the return dictionary
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "role": user.role,
+        "is_active": user.is_active 
+    }

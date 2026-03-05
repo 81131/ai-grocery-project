@@ -67,3 +67,15 @@ def get_admin_user(current_user_id: int = Depends(get_current_user), db: Session
             detail="You do not have permission to perform this action."
         )
     return current_user_id
+
+def get_active_user(current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Checks if the currently authenticated user is active (not suspended).
+    """
+    user = db.query(User).filter(User.user_id == current_user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended. Please contact administration."
+        )
+    return current_user_id
