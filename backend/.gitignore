@@ -10,3 +10,6 @@ models/__pycache__
 .__pycache__
 models/*.pyc
 **/__pycache__/
+./static
+static/
+static
