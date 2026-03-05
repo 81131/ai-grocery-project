@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from APIs.auth import get_active_user
 from sqlalchemy.orm import Session, joinedload
 from models.user_management import User
+import random
 
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -151,21 +152,26 @@ def checkout(
         
     total_amount = subtotal_amount + delivery_fee
         
+    generated_otp = None
+    if delivery_type == "Home Delivery":
+            generated_otp = str(random.randint(100000, 999999))
+            
     new_order = Order(
-        user_id=user_id,
-        subtotal_amount=subtotal_amount,
-        delivery_fee=delivery_fee,
-        total_amount=total_amount,
-        delivery_type=delivery_type,
-        total_weight_kg=total_weight,
-        delivery_distance_km=distance_km,
-        current_status="Pending",
-        payment_method=payment_method,
-        payment_slip_url=slip_url
-    )
+            user_id=user_id,
+            subtotal_amount=subtotal_amount,
+            delivery_fee=delivery_fee,
+            total_amount=total_amount,
+            delivery_type=delivery_type,
+            total_weight_kg=total_weight,
+            delivery_distance_km=distance_km,
+            current_status="Pending",
+            payment_method=payment_method,
+            payment_slip_url=slip_url,
+            otp_code=generated_otp  # NEW: Save the OTP to the database
+        )
     db.add(new_order)
-    db.flush() 
-    
+    db.flush()
+
     for item in cart.items:
         batch = db.query(StockBatch).filter(StockBatch.id == item.batch_id).first()
         batch.current_quantity -= float(item.quantity)
@@ -200,11 +206,24 @@ def get_all_orders(db: Session = Depends(get_db), user_id: int = Depends(get_cur
     ).order_by(Order.created_at.desc()).all()
 
 @router.put("/{order_id}/status")
-def update_order_status(order_id: int, status_data: OrderStatusUpdate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
+def update_order_status(order_id: int, status_data: OrderStatusUpdate, db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == order_id).first()
-    if not order: raise HTTPException(status_code=404, detail="Order not found")
+    if not order: 
+        raise HTTPException(status_code=404, detail="Order not found")
         
     order.current_status = status_data.status
+    
+    # LOGIC: Auto-assign driver when moving to 'Processing'
+    if status_data.status == "Processing" and order.delivery_type == "Home Delivery":
+        config = db.query(DeliveryConfig).first()
+        if config and config.auto_assign_drivers:
+            # Find the first available driver
+            available_driver = db.query(Driver).filter(Driver.is_available == True).first()
+            if available_driver:
+                order.driver_id = available_driver.user_id
+                available_driver.is_available = False # Mark as busy
+                # In a real app, you'd send a notification to the driver here
+
     db.add(OrderStatusHistory(order_id=order.id, status=status_data.status))
     db.commit()
     return {"message": f"Order #{order_id} status updated"}

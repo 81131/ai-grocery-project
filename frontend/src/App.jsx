@@ -77,8 +77,8 @@ const handleLogout = () => {
           </div>
         )}
 
-      <div style={{ width: '100%', minHeight: 'calc(100vh - 70px)' }}>              
-          <Routes>
+    <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 30px', minHeight: 'calc(100vh - 70px)' }}>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/orders" element={<Orders />} />

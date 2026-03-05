@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Date
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Date, Float
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy.sql import func
 from database import Base, get_db
@@ -38,6 +38,11 @@ class Driver(Base):
     vehicle_type = Column(String(50)) 
     assigned_city = Column(String(100)) 
     is_available = Column(Boolean, default=True)
+    
+    # NEW: Performance metrics (Required for the frontend)
+    rating = Column(Float, default=5.0) 
+    total_deliveries = Column(Integer, default=0)
+    
     user = relationship("User", back_populates="driver_profile")
 
 class PasswordHistory(Base):

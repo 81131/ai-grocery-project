@@ -3,14 +3,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from typing import List, Optional
 # Import the model from the models folder
-from models.user_management import User 
+from models.user_management import User, Driver
 from fastapi.security import OAuth2PasswordRequestForm
 from APIs.auth import verify_password, create_access_token, timedelta, ACCESS_TOKEN_EXPIRE_MINUTES
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from APIs.auth import get_password_hash 
-from schemas.user import UserCreate
-
+from schemas.user import UserCreate, DriverCreate, DriverUserResponse 
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
@@ -111,3 +110,33 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "role": user.role,
         "is_active": user.is_active 
     }
+@router.post("/register-driver")
+def register_driver(driver_in: DriverCreate, db: Session = Depends(get_db)):
+    # Create User
+    new_user = User(
+        email=driver_in.email,
+        password_hash=get_password_hash(driver_in.password),
+        first_name=driver_in.first_name,
+        last_name=driver_in.last_name,
+        phone_number=driver_in.phone_number,
+        role="driver"
+    )
+    db.add(new_user)
+    db.flush()
+
+    # Create Profile
+    new_driver = Driver(
+        user_id=new_user.user_id,
+        license_number=driver_in.license_number,
+        vehicle_type=driver_in.vehicle_type,
+        assigned_city=driver_in.assigned_city,
+        rating=5.0,
+        total_deliveries=0
+    )
+    db.add(new_driver)
+    db.commit()
+    return {"message": "Driver registered successfully"}
+
+@router.get("/drivers", response_model=List[DriverUserResponse])
+def get_all_drivers(db: Session = Depends(get_db)):
+    return db.query(User).filter(User.role == "driver").all()

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Truck, Plus, Star, X, UserMinus, CheckCircle, AlertCircle, Mail, Phone, Shield } from 'lucide-react';
 
 function AdminDelivery() {
   const [config, setConfig] = useState({
@@ -144,6 +145,40 @@ function AdminDelivery() {
           </div>
 
         </div>
+              {/* Driver Allocation Toggle */}
+      <div style={{ marginTop: '30px', padding: '20px', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+        <h3 style={{ marginTop: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Truck size={20} color="var(--color-primary)" /> Driver Allocation Logic
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ margin: 0, fontWeight: '600' }}>Automatically assign drivers to orders?</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+              If enabled, the system will pair 'Processing' orders with available drivers automatically.
+            </p>
+          </div>
+          <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '26px' }}>
+            <input 
+              type="checkbox" 
+              name="auto_assign_drivers"
+              checked={config.auto_assign_drivers}
+              onChange={(e) => setConfig({...config, auto_assign_drivers: e.target.checked})}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{ 
+              position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, 
+              backgroundColor: config.auto_assign_drivers ? 'var(--color-primary)' : '#ccc', 
+              transition: '.4s', borderRadius: '34px' 
+            }}>
+              <span style={{ 
+                position: 'absolute', content: '""', height: '18px', width: '18px', left: '4px', bottom: '4px', 
+                backgroundColor: 'white', transition: '.4s', borderRadius: '50%',
+                transform: config.auto_assign_drivers ? 'translateX(24px)' : 'translateX(0)'
+              }}></span>
+            </span>
+          </label>
+        </div>
+      </div>
 
         <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #eee', textAlign: 'right' }}>
           <button type="submit" style={{ padding: '12px 25px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>

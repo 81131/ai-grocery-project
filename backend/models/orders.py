@@ -1,8 +1,10 @@
 # backend/models/orders.py
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime, timezone
+
 
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
@@ -17,6 +19,7 @@ class DeliveryConfig(Base):
     
     # Methods: "weight", "distance", "combined", "fixed"
     active_method = Column(String, default="fixed")
+    auto_assign_drivers = Column(Boolean, default=False)
     
     # Configuration parameters
     fixed_fee = Column(Float, default=400.0)
@@ -46,6 +49,8 @@ class Order(Base):
     delivery_distance_km = Column(Float, default=0.0)
     
     current_status = Column(String, default="Pending") 
+    otp_code = Column(String(6), nullable=True)  
+    driver_id = Column(Integer, ForeignKey("users.user_id"), nullable=True) 
     payment_method = Column(String, default="Bank Transfer")
     payment_slip_url = Column(String, nullable=True)
     

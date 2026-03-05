@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Package, Truck, ShoppingCart, 
-  MessageSquare, Bot, BarChart2, Settings, Search, Bell, ShoppingBag
+  MessageSquare, Bot, BarChart2, Settings, Search, Bell, ShoppingBag, Star
 } from 'lucide-react';
 
 import AdminOrders from './AdminOrders';
@@ -11,6 +11,7 @@ import AdminSuppliers from './AdminSuppliers';
 import AdminDelivery from './AdminDelivery';
 import AdminDashboard from './AdminDashboard'; 
 import AdminUsers from './AdminUsers';
+import AdminDrivers from './AdminDrivers';
 
 function AdminPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,6 +46,7 @@ function AdminPanel() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'drivers', label: 'Delivery Drivers', icon: Truck }, 
     { id: 'inventory', label: 'Products & Inventory', icon: Package },
     { id: 'suppliers', label: 'Suppliers', icon: Truck },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
@@ -142,6 +144,7 @@ function AdminPanel() {
           {activeTab === 'orders' && <AdminOrders />}
           {activeTab === 'delivery' && <AdminDelivery />}
           {activeTab === 'users' && <AdminUsers />}
+          {activeTab === 'drivers' && <AdminDrivers />} 
 
           {['feedback', 'chatbot', 'reports'].includes(activeTab) && (
             <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-muted)' }}>

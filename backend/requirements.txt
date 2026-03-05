@@ -8,3 +8,4 @@ python-jose[cryptography]
 python-multipart
 google-genai
 python-dotenv==1.0.1
+pydantic[email]

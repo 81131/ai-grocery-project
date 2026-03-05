@@ -10,6 +10,7 @@ class DeliveryConfigUpdate(BaseModel):
     base_distance_km: float
     base_distance_fee: float
     extra_distance_fee_per_km: float
+    auto_assign_drivers: bool 
 
 class DeliveryFeeCalculationRequest(BaseModel):
     delivery_type: str 
