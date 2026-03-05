@@ -28,7 +28,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - ENVIRONMENT=production # <-- Added to trigger secure mode
+      - ENVIRONMENT=production
     depends_on:
       - db
 
@@ -36,12 +36,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Pass the map key into the build stage
+        - VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY} 
+        - VITE_API_URL=http://localhost:8000
     container_name: grocery_react_frontend
-    # Removed command and volumes. Nginx will handle serving the built files.
     ports:
-      - "3000:80" # <-- Changed to map to Nginx's internal port 80
-    environment:
-      - VITE_API_URL=http://localhost:8000
+      - "3000:80"
     depends_on:
       - backend
 
