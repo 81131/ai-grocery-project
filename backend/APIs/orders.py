@@ -10,6 +10,8 @@ from models.cart import Cart
 from models.inventory import StockBatch, Product
 from schemas.orders import DeliveryConfigUpdate, DeliveryFeeCalculationRequest, OrderStatusUpdate
 from APIs.auth import get_current_user
+from sqlalchemy import func
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -204,3 +206,101 @@ def get_notifications(db: Session = Depends(get_db), user_id: int = Depends(get_
         OrderStatusHistory.order_id.in_(order_ids)
     ).order_by(OrderStatusHistory.changed_at.desc()).limit(10).all()
     return notifications
+
+
+@router.get("/dashboard-stats")
+def get_dashboard_stats(db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
+    """Aggregates data for the Admin Dashboard"""
+    
+    # 1. Basic Stats
+    total_orders = db.query(Order).count()
+    total_revenue = db.query(func.sum(Order.total_amount)).scalar() or 0.0
+    total_products = db.query(Product).count()
+    
+    # We will approximate users by counting unique user_ids in orders if you don't have a direct User model import here
+    active_users = db.query(Order.user_id).distinct().count()
+
+    # 2. Recent Orders (Top 4)
+    recent_orders_db = db.query(Order).order_by(Order.created_at.desc()).limit(4).all()
+    recent_orders = []
+    
+    # Status color mapping
+    status_colors = {
+        "Pending": {"color": "#eab308", "bg": "#fef9c3"},
+        "Processing": {"color": "#3b82f6", "bg": "#dbeafe"},
+        "Shipped": {"color": "#a855f7", "bg": "#f3e8ff"},
+        "Delivered": {"color": "#22c55e", "bg": "#dcfce7"},
+        "Cancelled": {"color": "#ef4444", "bg": "#fee2e2"}
+    }
+
+    for o in recent_orders_db:
+        colors = status_colors.get(o.current_status, status_colors["Pending"])
+        
+        # Calculate time ago roughly
+        time_diff = datetime.now(timezone.utc) - o.created_at
+        hours_ago = int(time_diff.total_seconds() / 3600)
+        time_str = f"{hours_ago} hours ago" if hours_ago > 0 else "Just now"
+        
+        recent_orders.append({
+            "id": f"ORD-{o.id:04d}",
+            "name": o.delivery_info.customer_name if o.delivery_info else "Unknown",
+            "time": time_str,
+            "total": f"Rs. {o.total_amount:.2f}",
+            "status": o.current_status,
+            "color": colors["color"],
+            "bg": colors["bg"]
+        })
+
+    # 3. Low Stock Alerts (Items with < 20 quantity)
+    low_stock_db = db.query(StockBatch).filter(StockBatch.current_quantity > 0, StockBatch.current_quantity < 20).limit(5).all()
+    low_stock_items = []
+    for batch in low_stock_db:
+        cat_names = ", ".join([c.name for c in batch.product.categories])
+        low_stock_items.append({
+            "name": batch.product.product_name,
+            "cat": cat_names if cat_names else "Uncategorized",
+            "qty": batch.current_quantity
+        })
+
+    # 4. Chart Data: Mocking the last 6 months of sales for the Line Chart based on DB data
+    # (In a massive production app, you'd use SQL GROUP BY MONTH, but this is safe for SQLite/Postgres compatibility)
+    sales_data = []
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    current_month_idx = datetime.now().month - 1
+    
+    for i in range(5, -1, -1):
+        m_idx = (current_month_idx - i) % 12
+        # For this example, we generate a random realistic curve based on total revenue
+        # Replace with actual DB grouped queries when you have historical data
+        sales_data.append({
+            "name": months[m_idx],
+            "sales": float(total_revenue) / 6 * (0.8 + (i * 0.1)) # Simulated trend
+        })
+
+    # 5. Chart Data: Category Distribution
+    # Count how many products belong to each category
+    categories_db = db.query(Category).all()
+    colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4']
+    category_data = []
+    
+    for idx, cat in enumerate(categories_db):
+        prod_count = len(cat.products)
+        if prod_count > 0:
+            category_data.append({
+                "name": cat.name,
+                "value": prod_count,
+                "color": colors[idx % len(colors)]
+            })
+
+    return {
+        "stats": {
+            "totalRevenue": total_revenue,
+            "totalOrders": total_orders,
+            "totalProducts": total_products,
+            "activeUsers": active_users
+        },
+        "recentOrders": recent_orders,
+        "lowStockItems": low_stock_items,
+        "salesData": sales_data,
+        "categoryData": category_data
+    }
